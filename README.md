@@ -16,4 +16,4 @@ Download our pretrained models from one Drive (1: lower link), and put them in "
 Download our VGG models from one Drive (2: lower link), and put them in "./vgg_model".
 
 2: https://kth-my.sharepoint.com/:f:/g/personal/sanazsab_ug_kth_se/EtT11pgLytlDngIIRd5NYuUBXHiXy-iA8IgbjJkFCsAfag?e=hCTPbN
-![image](https://user-images.githubusercontent.com/88779083/167309836-3b6e2585-bf42-44a3-a268-2893e3575b66.png)
+![image](https://user-images.githubusercontent.com/88779083/167309871-1840b26e-f3e9-4699-8367-14eef7b69067.png)
