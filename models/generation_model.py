@@ -805,7 +805,7 @@ class GenerationModel(BaseModel):
                     os.makedirs(_)            
             torch.save(self.gmm1_model.state_dict(), model_G_gmm1)
             torch.save(self.generator_parsing.state_dict(), model_G_parsing)
-            torch.save(self.generator_depthi.state_dict(), model_G_depthi)
+#            torch.save(self.generator_depthi.state_dict(), model_G_depthi)
             torch.save(self.generator_appearance.state_dict(), model_G_appearance)
             torch.save(self.generator_face.state_dict(), model_G_face)
             torch.save(self.discriminator_appearance.state_dict(), model_D_appearance)
