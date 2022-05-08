@@ -1,0 +1,334 @@
+import os
+import os.path as osp
+import numpy as np
+import sys
+import torch
+import torch.nn as nn
+import torch.backends.cudnn as cudnn
+import sys
+sys.path.append('..')
+from utils import pose_utils
+from utils.loss import GANLoss, PixelWiseBCELoss, PixelSoftmaxLoss, VGGLoss, NNLoss, NewL1Loss, TVLoss
+from abc import ABC, abstractmethod
+import datetime
+from torch.optim import lr_scheduler
+import time
+from collections import OrderedDict
+from utils.util import get_scheduler
+
+class BaseModel(ABC):
+    def name(self):
+        return 'BaseModel'
+
+    def __init__(self, opt):
+        super(BaseModel, self).__init__()
+        self.opt = opt
+        cudnn.enabled = True
+        cudnn.benchmark = True
+        # define loss
+        self.criterionGAN = GANLoss(opt.gan_mode).cuda()
+        self.criterionL1 = torch.nn.L1Loss().cuda()
+        self.criterion_newL1 = NewL1Loss()
+        self.criterion_smooth_L1 = torch.nn.SmoothL1Loss()
+        self.criterion_vgg = VGGLoss("vgg_model/vgg19-dcbb9e9d.pth").cuda()
+        self.weight = np.array([0.03] * 2 + [0.08] * 1 + [0.03] * 2 + [0.08] * 3 + [0.03] * 5 + [0.08] * 5 + [0.05] * 2)
+        self.weight = torch.Tensor(self.weight).cuda()
+        self.criterionBCE_re = PixelSoftmaxLoss(self.weight).cuda()
+        self.criterion_tv = TVLoss()
+        # log dir
+        if opt.joint_all and opt.train_mode != 'depth':
+            self.save_dir = os.path.join('net_model', 'joint_checkpoint', opt.suffix)
+        else:   
+            self.save_dir = os.path.join('net_model', opt.train_mode + '_checkpoint', opt.suffix)
+        self.date_suffix = self.dt()
+        self.log_dir = os.path.join(self.save_dir, 'logs')
+
+        self.log_name = os.path.join(self.log_dir, 'train_log_%s_%s.log'%(opt.suffix, self.date_suffix))
+        self.vis_path = os.path.join(self.save_dir, 'imgs')
+        
+        if not os.path.exists(self.vis_path):
+            os.makedirs(self.vis_path)
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        
+        with open(os.path.join(self.log_name), 'a') as log_file:
+            now = time.strftime("%c")
+            log_file.write('================ Training Loss (%s) ================\n' % now)
+    
+    def dt(self):
+        return datetime.datetime.now().strftime("%m-%d-%H")
+
+    def update_learning_rate(self, opt, optimizer, epoch):
+        base_lr = opt.lr
+        lr = base_lr
+        if epoch > 30:
+            lr = base_lr * (1 - base_lr/opt.decay_iters)
+        if isinstance(optimizer, list):
+            for _ in optimizer:
+                for param_group in _.param_groups:
+                    param_group['lr'] = lr
+        else:   
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
+        
+        # TO DO
+        # if epoch <= 4:
+        #     lr = base_lr
+        # elif epoch > 24:
+        #     lr = 2e-4 * (1 - (epoch-24) / 10)
+        # else:
+        #     lr = self.get_learning_rate(optimizer)
+        #     if lr <= 2e-4:
+        #         lr = 2e-4
+        #     else:
+        #         lr = base_lr - (base_lr - 2e-4) * (epoch - 4) / 15
+
+        # for scheduler in self.get_scheduler(optimizer, opt):
+        #     scheduler.step()
+        
+    def get_learning_rate(self, optimizer):
+        lr = []
+        if not isinstance(optimizer, list):
+            for param_group in optimizer.param_groups:
+                lr += [param_group['lr']]
+        else:
+            for _ in optimizer:
+                for param_group in _.param_groups:
+                    lr += [param_group['lr']]
+        return lr[0]
+
+    def set_requires_grad(self, nets, requires_grad=True):
+        if not isinstance(nets, list):
+            nets = [nets]
+        for net in nets:
+            if net is not None:
+                for param in net.parameters():
+                    param.requires_grad = requires_grad
+
+    def adjust_fade_in_alpha(self, epoch):
+        alpha = list(np.arange(0.6, 1.2, 0.2))
+        if epoch < 6:
+            fade_in_alpha = alpha[epoch // 2]
+        else:
+            fade_in_alpha = 1
+        
+        return int(fade_in_alpha)
+
+    def load_network(self, network, save_path, ifprint=False):
+        if ifprint:
+            print(network)       
+        try:
+            network.load_state_dict(torch.load(save_path))
+        except:
+            pretrained_dict = torch.load(save_path)                
+            model_dict = network.state_dict()
+            try:
+                pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}                    
+                network.load_state_dict(pretrained_dict)
+            except:
+                print('Pretrained network %s has fewer layers; The following are not initialized:')
+                for k, v in pretrained_dict.items():                      
+                    if v.size() == model_dict[k].size():
+                        model_dict[k] = v
+                        print(k)
+                if sys.version_info >= (3,0):
+                    not_initialized = set()
+                else:
+                    from sets import Set
+                    not_initialized = Set()                    
+
+                for k, v in model_dict.items():
+                    if k not in pretrained_dict or v.size() != pretrained_dict[k].size():
+                        not_initialized.add(k.split('.')[0])
+
+                print(sorted(not_initialized))
+                network.load_state_dict(model_dict)     
+    
+    def print_loss(self, opt):
+        pass
+    
+    def get_scheduler(self, optimizer, opt):
+
+        if opt.lr_policy == 'linear':
+            def lambda_rule(epoch):
+                lr_l = 1.0 - max(0, epoch + opt.epoch_count - opt.niter) / float(opt.niter_decay + 1)
+                return lr_l
+            scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
+        elif opt.lr_policy == 'step':
+            scheduler = lr_scheduler.StepLR(optimizer, step_size=opt.lr_decay_iters, gamma=0.1)
+        elif opt.lr_policy == 'plateau':
+            scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
+        elif opt.lr_policy == 'cosine':
+            scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.niter, eta_min=0)
+        else:
+            return NotImplementedError('learning rate policy [%s] is not implemented', opt.lr_policy)
+        return scheduler
+    
+        # errors: same format as |errors| of plotCurrentErrors
+    
+    @staticmethod
+    def modify_commandline_options(parser, is_train):
+        """Add new model-specific options, and rewrite default values for existing options.
+        Parameters:
+            parser          -- original option parser
+            is_train (bool) -- whether training phase or test phase. You can use this flag to add training-specific or test-specific options.
+        Returns:
+            the modified parser.
+        """
+        return parser
+
+    @abstractmethod
+    def set_input(self, input):
+        """Unpack input data from the dataloader and perform necessary pre-processing steps.
+        Parameters:
+            input (dict): includes the data itself and its metadata information.
+        """
+        pass
+
+    @abstractmethod
+    def forward(self):
+        """Run forward pass; called by both functions <optimize_parameters> and <test>."""
+        pass
+
+    @abstractmethod
+    def optimize_parameters(self):
+        """Calculate losses, gradients, and update network weights; called in every training iteration"""
+        pass
+
+    def train(self):
+        """Make models train mode during training time"""
+        for name in self.model_names:
+            if isinstance(name, str):
+                net = getattr(self, 'net' + name)
+                net.train()
+                
+    def eval(self):
+        """Make models eval mode during test time"""
+        for name in self.model_names:
+            if isinstance(name, str):
+                net = getattr(self, 'net' + name)
+                net.eval()
+
+    def test(self):
+        """Forward function used in test time.
+        This function wraps <forward> function in no_grad() so we don't save intermediate steps for backprop
+        It also calls <compute_visuals> to produce additional visualization results
+        """
+        with torch.no_grad():
+            self.forward()
+            # self.compute_visuals()
+
+    def compute_visuals(self):
+        """Calculate additional output images for tensorbard visualization"""
+        pass
+
+
+    def get_current_visuals(self):
+        """Return visualization images. train.py will display these images with tensorboard, and save the images to a HTML"""
+        visual_ret = OrderedDict()
+        for name in self.visual_names:
+            if isinstance(name, str):
+                visual_ret[name] = getattr(self, name)
+        return visual_ret
+
+    def get_current_losses(self):
+        """Return traning losses / errors. train.py will print out these errors on console, and save them to a file"""
+        errors_ret = OrderedDict()
+        for name in self.loss_names:
+            if isinstance(name, str):
+                errors_ret[name] = float(getattr(self, 'loss_' + name))  # float(...) works for both scalar tensor and float number
+        return errors_ret
+
+#    def save_networks(self, epoch):
+        """Save all the networks to the disk.
+        Parameters:
+            epoch (int) -- current epoch; used in the file name '%s_net_%s.pth' % (epoch, name)
+        """
+#        for name in self.model_names:
+##            if isinstance(name, str):
+##                save_filename = '%s_net_%s.pth' % (epoch, name)
+##                save_path = os.path.join(self.save_dir, save_filename)
+##                net = getattr(self, 'net' + name)
+##
+##                if len(self.gpu_ids) > 1 and torch.cuda.is_available():
+##                    torch.save(net.module.cpu().state_dict(), save_path)
+##                    net.cuda(self.gpu_ids[0])
+##                elif len(self.gpu_ids) == 1 and torch.cuda.is_available():
+##                    torch.save(net.cpu().state_dict(), save_path)
+##                    net.cuda(self.gpu_ids[0])
+##                else:
+##                    torch.save(net.cpu().state_dict(), save_path)
+##
+##    def load_networks(self, epoch):
+##        """Load all the networks from the disk.
+##        Parameters:
+##            epoch (int) -- current epoch; used in the file name '%s_net_%s.pth' % (epoch, name)
+##        """
+##        for name in self.model_names:
+##            if isinstance(name, str):
+##                load_filename = '%s_net_%s.pth' % (epoch, name)
+##                load_path = os.path.join(self.save_dir, load_filename)
+##                net = getattr(self, 'net' + name)
+##                if isinstance(net, torch.nn.DataParallel):
+##                    net = net.module
+##                print('loading the model from %s' % load_path)
+##                state_dict = torch.load(load_path, map_location=self.device)
+##                if hasattr(state_dict, '_metadata'):
+##                    del state_dict._metadata
+##
+##                net.load_state_dict(state_dict)
+#
+#    def print_networks(self, verbose):
+#        """Print the total number of parameters in the network and (if verbose) network architecture
+#        Parameters:
+#            verbose (bool) -- if verbose: print the network architecture
+#        """
+#        print('---------- Networks initialized -------------')
+#        for name in self.model_names:
+#            if isinstance(name, str):
+#                net = getattr(self, 'net' + name)
+#                num_params = 0
+#                for param in net.parameters():
+#                    num_params += param.numel()
+#                if verbose: # save detailed model info to the disk
+#                    os.makedirs(self.save_dir, exist_ok=True)
+#                    file_name = os.path.join(self.save_dir, 'model.txt')
+#                    with open(file_name, 'wt') as model_file: 
+#                        print(net, file=model_file)
+#                        model_file.write('\n[Network %s] Total number of parameters : %.3f M\n' % (name, num_params / 1e6))
+#                    model_file.close()
+#                print('[Network %s] Total number of parameters : %.3f M' % (name, num_params / 1e6))
+#        print('-----------------------------------------------')
+#        
+#       
+
+    def set_requires_grad(self, nets, requires_grad=False):
+        """Set requies_grad=Fasle for all the networks to avoid unnecessary computations
+        Parameters:
+            nets (network list)   -- a list of networks
+            requires_grad (bool)  -- whether the networks require gradients or not
+        """
+        if not isinstance(nets, list):
+            nets = [nets]
+        for net in nets:
+            if net is not None:
+                for param in net.parameters():
+                    param.requires_grad = requires_grad
+
+    def get_current_visuals(self):
+        """Return visualization images. train.py will display these images with tensorboard, and save the images to a HTML"""
+        visual_ret = OrderedDict()
+        for name in self.visual_names:
+            if isinstance(name, str):
+                visual_ret[name] = getattr(self, name)
+        return visual_ret
+
+
+
+    def get_current_losses(self):
+        """Return traning losses / errors. train.py will print out these errors on console, and save them to a file"""
+        errors_ret = OrderedDict()
+        for name in self.loss_names:
+            if isinstance(name, str):
+                errors_ret[name] = float(getattr(self, 'loss_' + name))  # float(...) works for both scalar tensor and float number
+        return errors_ret
