@@ -125,20 +125,24 @@ class Config():
         parser.add_argument('--dataroot', default=False, action='store_true')
         parser.add_argument('--pool_size', type=int, default=100)
 
-    
         ### resume dir
        # parser.add_argument('--resume_gmm1', default='/Midgard/home/sanazsab/MPV3DTON/pretrained_checkpoint/step_009000.pth', type=str)
         parser.add_argument('--resume_gmm1', default='/Midgard/home/sanazsab/MPV3DTON/net_model/gmm_checkpoint/new/generator1/checkpoint_G_epoch_197_loss_0.04963_pth.tar', type=str)
         parser.add_argument('--resume_gmm2', default='/Midgard/home/sanazsab/MPV3DTON/net_model/gmm_checkpoint/new/generator2/checkpoint_G_epoch_197_loss_0.06546_pth.tar', type=str)
        # parser.add_argument('--resume_gmm2', default='/Midgard/home/sanazsab/MPV3DTON/net_model/gmm_checkpoint/generator2/checkpoint_G_epoch_40_loss_0.09704_pth.tar', type=str)
         parser.add_argument('--resume_G_parse', default='/Midgard/home/sanazsab/MPV3DTON/pretrained_checkpoint/parsing.tar', type=str)
-        parser.add_argument('--resume_G_app', default='', type=str) #pretrained_checkpoint/app.tar
- #       parser.add_argument('--resume_G_app', default='/Midgard/home/sanazsab/MPV3DTON/pretrained_checkpoint/app.tar', type=str) #pretrained_checkpoint/app.tar
+ #       parser.add_argument('--resume_G_app', default='/Midgard/home/sanazsab/MPV3DTON/net_model/joint_checkpoint/refactornew/generator_appearance/checkpoint_G_epoch_118_loss_0.36910_pth.tar', type=str) #pretrained_checkpoint/app.tar      without parsing mode
+        parser.add_argument('--resume_G_app', default='/Midgard/home/sanazsab/MPV3DTON/pretrained_checkpoint/app.tar', type=str) #pretrained_checkpoint/app.tar
       #  parser.add_argument('--resume_G_app', default='/Midgard/home/sanazsab/MPV3DTON/net_model/joint_checkpoint/refactor/generator_appearance/checkpoint_G_epoch_77_loss_2.98864_pth.tar', type=str) #pretrained_chec$
         parser.add_argument('--resume_G_face', default='/Midgard/home/sanazsab/MPV3DTON/pretrained_checkpoint/face.tar', type=str)
        # parser.add_argument('--resume_G_face', default='/Midgard/home/sanazsab/MPV3DTON/net_model/joint_checkpoint/generator_face/checkpoint_G_epoch_16_loss_3.03893_pth.tar', type=str)
         parser.add_argument('--resume_G_depth', default='/Midgard/home/sanazsab/MPV3DTON/net_model/depth_checkpoint/generator_depth/checkpoint_DRM_epoch_199_loss_4.52575_pth.tar', type=str)
         parser.add_argument('--resume_G_depthi', default='/Midgard/home/sanazsab/MPV3DTON/net_model/depthi_checkpoint/generator/checkpoint_G_epoch_197_loss_0.35948_pth.tar', type=str)
+
+        parser.add_argument('--resume_D_parse', default='', type=str)
+      #  parser.add_argument('--resume_D_app', default='/Midgard/home/sanazsab/MPV3DTON/net_model/joint_checkpoint/refactor/dicriminator_appearance/checkpoint_D_epoch_165_loss_0.24961_pth.tar', type=str)        
+      #  parser.add_argument('--resume_D_face', default='/Midgard/home/sanazsab/MPV3DTON/net_model/face_checkpoint/dicriminator/checkpoint_D_epoch_199_loss_0.12830_pth.tar', type=str)
+      #  parser.add_argument('--resume_D_depthi', default='/Midgard/home/sanazsab/MPV3DTON/net_model/depthi_checkpoint/dicriminator/checkpoint_D_epoch_199_loss_0.00000_pth.tar', type=str)    
 
         parser.add_argument('--resume_D_parse', default='', type=str)
       #  parser.add_argument('--resume_D_app', default='/Midgard/home/sanazsab/MPV3DTON/net_model/joint_checkpoint/refactor/dicriminator_appearance/checkpoint_D_epoch_165_loss_0.24961_pth.tar', type=str)        
