@@ -87,10 +87,10 @@ class GenerationModel(BaseModel):
         # define network
         self.gmm1_model = torch.nn.DataParallel(GMM(opt.input1_ng1, opt.input2_ng1, opt)).cuda()
         self.gmm2_model = torch.nn.DataParallel(GMM(opt.input1_ng2, opt.input2_ng2, opt)).cuda()
-#        self.generator_parsing = Define_G(opt.input_nc_G_parsing, opt.output_nc_parsing, opt.ndf, opt.netG_parsing, opt.norm, 
-#                                        not opt.no_dropout, opt.init_type, opt.init_gain, opt.gpu_ids_n)
-#        self.discriminator_parsing = Define_D(opt.input_nc_D_parsing, opt.ndf, opt.netD_parsing, opt.n_layers_D, 
-#                                        opt.norm, opt.init_type, opt.init_gain, opt.gpu_ids_n)
+        self.generator_parsing = Define_G(opt.input_nc_G_parsing, opt.output_nc_parsing, opt.ndf, opt.netG_parsing, opt.norm, 
+                                        not opt.no_dropout, opt.init_type, opt.init_gain, opt.gpu_ids_n)
+        self.discriminator_parsing = Define_D(opt.input_nc_D_parsing, opt.ndf, opt.netD_parsing, opt.n_layers_D, 
+                                        opt.norm, opt.init_type, opt.init_gain, opt.gpu_ids_n)
 
         if opt.train_mode == 'depthi':
 
@@ -135,16 +135,16 @@ class GenerationModel(BaseModel):
 
         # load networks
         if opt.train_mode == 'appearance':
-    #        self.networks_name = ['gmm', 'gmm', 'parsing', 'parsing' , 'appearance', 'appearance', 'face', 'face']
-    #        self.networks_model = [self.gmm1_model, self.gmm2_model, self.generator_parsing, self.discriminator_parsing, self.generator_appearance, self.discriminator_appearance, 
-    #                         self.generator_face, self.discriminator_face]
-    #        self.resume_path = [resume_gmm1, resume_gmm2, resume_G_parse, resume_D_parse,  resume_G_appearance, resume_D_appearance, resume_G_face, resume_D_face]
-
-
-            self.networks_name = ['gmm', 'gmm' , 'appearance', 'appearance', 'face', 'face']
-            self.networks_model = [self.gmm1_model, self.gmm2_model, self.generator_appearance, self.discriminator_appearance, 
+            self.networks_name = ['gmm', 'gmm', 'parsing', 'parsing' , 'appearance', 'appearance', 'face', 'face']
+            self.networks_model = [self.gmm1_model, self.gmm2_model, self.generator_parsing, self.discriminator_parsing, self.generator_appearance, self.discriminator_appearance, 
                              self.generator_face, self.discriminator_face]
-            self.resume_path = [resume_gmm1, resume_gmm2,  resume_G_appearance, resume_D_appearance, resume_G_face, resume_D_face]
+            self.resume_path = [resume_gmm1, resume_gmm2, resume_G_parse, resume_D_parse,  resume_G_appearance, resume_D_appearance, resume_G_face, resume_D_face]
+
+
+    #        self.networks_name = ['gmm', 'gmm' , 'appearance', 'appearance', 'face', 'face']
+    #        self.networks_model = [self.gmm1_model, self.gmm2_model, self.generator_appearance, self.discriminator_appearance, 
+    #                         self.generator_face, self.discriminator_face]
+   #         self.resume_path = [resume_gmm1, resume_gmm2,  resume_G_appearance, resume_D_appearance, resume_G_face, resume_D_face]
 
 
 
@@ -166,8 +166,8 @@ class GenerationModel(BaseModel):
         self.optimizer_gmm1 = torch.optim.Adam(self.gmm1_model.parameters(), lr=opt.lr, betas=[0.5, 0.999])
         self.optimizer_gmm2 = torch.optim.Adam(self.gmm2_model.parameters(), lr=opt.lr, betas=[0, 0.999])
 
-#        self.optimizer_parsing_G = torch.optim.Adam(self.generator_parsing.parameters(), lr=opt.lr, betas=[opt.beta1, 0.999])
-#        self.optimizer_parsing_D = torch.optim.Adam(self.discriminator_parsing.parameters(), lr=opt.lr, betas=[opt.beta1, 0.999])
+        self.optimizer_parsing_G = torch.optim.Adam(self.generator_parsing.parameters(), lr=opt.lr, betas=[opt.beta1, 0.999])
+        self.optimizer_parsing_D = torch.optim.Adam(self.discriminator_parsing.parameters(), lr=opt.lr, betas=[opt.beta1, 0.999])
         
         if opt.train_mode == 'depthi':        
 
@@ -201,9 +201,9 @@ class GenerationModel(BaseModel):
             
             self.optimizer_D = [ self.optimizer_appearance_D, self.optimizer_face_D]
 
-#            self.optimizer_G = [self.optimizer_gmm1, self.optimizer_gmm2, self.optimizer_parsing_G, self.optimizer_appearance_G, self.optimizer_face_G]
+            self.optimizer_G = [self.optimizer_gmm1, self.optimizer_gmm2, self.optimizer_parsing_G, self.optimizer_appearance_G, self.optimizer_face_G]
             
-#            self.optimizer_D = [self.optimizer_parsing_D, self.optimizer_appearance_D, self.optimizer_face_D]
+            self.optimizer_D = [self.optimizer_parsing_D, self.optimizer_appearance_D, self.optimizer_face_D]
 
         elif opt.train_mode == 'depth': #and self.use_gan_loss:
               self.optimizer_G = self.optimizer_depth_G
@@ -241,17 +241,17 @@ class GenerationModel(BaseModel):
             self.source_parse_shape = result['source_parse_shape'].float().cuda()
             self.agnostic = torch.cat((self.source_parse_shape, self.im_h, self.target_pose_embedding), dim=1)
 
-#            if opt.joint_all: # opt.joint
-#                generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
-#            else:
-#                generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
+            if opt.joint_all: # opt.joint
+                generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
+            else:
+                generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
                                 
-#            self.input_appearance = torch.cat((self.image_without_cloth, self.warped_cloth, generated_parsing), 1).cuda()
+            self.input_appearance = torch.cat((self.image_without_cloth, self.warped_cloth, generated_parsing), 1).cuda()
 
-#            with torch.no_grad():
-#                self.generated_inter = self.generator_appearance(self.input_appearance)
-#                p_rendered, self.m_composite = torch.split(self.generated_inter, 3, 1) 
-#                self.m_composite = F.sigmoid(self.m_composite)
+            with torch.no_grad():
+                self.generated_inter = self.generator_appearance(self.input_appearance)
+                p_rendered, self.m_composite = torch.split(self.generated_inter, 3, 1) 
+                self.m_composite = F.sigmoid(self.m_composite)
               
         elif opt.train_mode == 'parsing':
             self.real_s = self.input_parsing
@@ -269,10 +269,10 @@ class GenerationModel(BaseModel):
                 self.im_h = result['im_h'].float().cuda()
                 self.source_parse_shape = result['source_parse_shape'].float().cuda()
                 self.agnostic = torch.cat((self.source_parse_shape, self.im_h, self.target_pose_embedding), dim=1).cuda()
-#                self.generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
-#                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
-#                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
-#                self.generated_bdepthi = F.tanh(self.generated_bdepthi)
+                self.generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
+                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
+                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
+                self.generated_bdepthi = F.tanh(self.generated_bdepthi)
 
             else:    
                 with torch.no_grad():          
@@ -280,22 +280,22 @@ class GenerationModel(BaseModel):
 #                    self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1], 1)
 #                    self.generated_fdepthi = torch.tanh(self.generated_fdepthi)
 #                    self.generated_bdepthi = torch.tanh(self.generated_bdepthi)
-#            self.input_appearance = torch.cat((self.image_without_cloth, self.warped_cloth, self.generated_parsing), 1).cuda()            
-            self.input_appearance = torch.cat((self.image_without_cloth, self.warped_cloth), 1).cuda()            
+            self.input_appearance = torch.cat((self.image_without_cloth, self.warped_cloth, self.generated_parsing), 1).cuda()            
+#            self.input_appearance = torch.cat((self.image_without_cloth, self.warped_cloth), 1).cuda()            
 
 #add parse            "attention please"
-#            generated_parsing_ = torch.argmax(self.generated_parsing, 1, keepdim=True)            
-#            self.generated_parsing_argmax = torch.Tensor()
+            generated_parsing_ = torch.argmax(self.generated_parsing, 1, keepdim=True)            
+            self.generated_parsing_argmax = torch.Tensor()
             
-#            for _ in range(20):
-#                self.generated_parsing_argmax = torch.cat([self.generated_parsing_argmax.float().cuda(), (generated_parsing_ == _).float()], dim=1)
-#            self.warped_cloth_parse = ((generated_parsing_ == 5) + (generated_parsing_ == 6) + (generated_parsing_ == 7)).float().cuda()
+            for _ in range(20):
+                self.generated_parsing_argmax = torch.cat([self.generated_parsing_argmax.float().cuda(), (generated_parsing_ == _).float()], dim=1)
+            self.warped_cloth_parse = ((generated_parsing_ == 5) + (generated_parsing_ == 6) + (generated_parsing_ == 7)).float().cuda()
 
-#            if opt.save_time:
-#                self.generated_parsing_vis = torch.Tensor([0]).expand_as(self.target_image)
-#            else:
+            if opt.save_time:
+                self.generated_parsing_vis = torch.Tensor([0]).expand_as(self.target_image)
+            else:
                 # decode labels cost much time
-#                _generated_parsing = torch.argmax(self.generated_parsing, 1, keepdim=True)
+                _generated_parsing = torch.argmax(self.generated_parsing, 1, keepdim=True)
 #                _generated_parsing = _generated_parsing.permute(0,2,3,1).contiguous().int()
 #                self.generated_parsing_vis = pose_utils.decode_labels(_generated_parsing) #array
             
@@ -305,12 +305,12 @@ class GenerationModel(BaseModel):
             if opt.joint_all: # opt.joint
                 generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
                 self.generated_parsing_face = F.softmax(self.generator_parsing(self.input_parsing), 1)
-#                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
-#                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
+                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
+                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
             else:
                 generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
-#                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
-#                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
+                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
+                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
 
                 "attention please"
                 generated_parsing_ = torch.argmax(generated_parsing, 1, keepdim=True)            
@@ -340,8 +340,6 @@ class GenerationModel(BaseModel):
             self.real_s = self.source_face
 
         elif opt.train_mode == 'depth':
-#            self.target_splitext = result['target_splitext'].float().cuda()
-#            self.cloth_splitext = result['cloth_splitext'].float().cuda()
             self.warped_cloth_image = result['warped_cloth_image'].float().cuda()
             self.im_hhl = result['im_hhl'].float().cuda()
             self.fdepth_initial = result['fdepth_initial'].float().cuda()
@@ -431,8 +429,8 @@ class GenerationModel(BaseModel):
                 self.fake_t_face = self.generator_face(input)
                 ###residual learning
                 #"""attention"""
-                # fake_t_face = create_part(fake_t_face, self.generated_parsing, 'face', False)
-                # fake_t_face = generate_face + fake_t_face
+                fake_t_face = create_part(fake_t_face, self.generated_parsing, 'face', False)
+                fake_t_face = generate_face + fake_t_face
                 self.fake_t_face = create_part(self.fake_t_face, self.generated_parsing_argmax, 'face', False)
                 ### fake image
                 self.fake_t = generate_image_without_face + self.fake_t_face
@@ -520,7 +518,7 @@ class GenerationModel(BaseModel):
             loss_vgg1, _ = self.criterion_vgg(self.fake_t, self.real_t, self.target_parse, True, True, True)
             loss_vgg2, _ = self.criterion_vgg(self.fake_t, self.real_t, self.target_parse, True, True, True)
             self.loss_G_vgg = (loss_vgg1 + loss_vgg2) * opt.G_VGG
-#            self.loss_G_mask = self.criterionL1(self.m_composite, self.warped_cloth_parse) * opt.mask
+            self.loss_G_mask = self.criterionL1(self.m_composite, self.warped_cloth_parse) * opt.mask
             if opt.mask_tvloss:
                 self.loss_G_mask_tv = self.criterion_tv(self.m_composite)
             else:
@@ -537,8 +535,8 @@ class GenerationModel(BaseModel):
                 self.loss_G_face = self.criterionL1(self.fake_t_face, self.real_t_face) * opt.face_L1
                 self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_vgg + self.loss_G_mask + self.loss_G_parsing + self.loss_G_gmm + self.loss_G_face
             else:
-                self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_vgg + self.loss_G_mask_tv
-#                self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_vgg + self.loss_G_mask + self.loss_G_mask_tv
+#                self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_vgg + self.loss_G_mask_tv
+                self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_vgg + self.loss_G_mask + self.loss_G_mask_tv
             self.loss_G.backward()
     
         if opt.train_mode == 'face':
@@ -723,8 +721,8 @@ class GenerationModel(BaseModel):
 
 
         if opt.train_mode == 'appearance':
-#            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.generated_parsing_vis, self.fake_t.detach()]
-            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.fake_t.detach()]
+            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.generated_parsing_vis, self.fake_t.detach()]
+#            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.fake_t.detach()]
 
         if opt.train_mode == 'face':
             images = [self.generated_image.detach(), self.refined_image.detach(), self.source_image, self.target_image, self.real_t, self.fake_t.detach()]
@@ -786,8 +784,8 @@ class GenerationModel(BaseModel):
         if opt.joint_all:
             model_G_gmm1 = osp.join(self.save_dir, 'gmm1_model', 'checkpoint_G_epoch_%d_loss_%0.5f_pth.tar'%(epoch, self.loss_G))
           
-#            model_G_parsing = osp.join(self.save_dir, 'generator_parsing', 'checkpoint_G_epoch_%d_loss_%0.5f_pth.tar'%(epoch, self.loss_G))
-#            model_D_parsing = osp.join(self.save_dir, 'dicriminator_parsing', 'checkpoint_D_epoch_%d_loss_%0.5f_pth.tar'%(epoch, self.loss_D))
+            model_G_parsing = osp.join(self.save_dir, 'generator_parsing', 'checkpoint_G_epoch_%d_loss_%0.5f_pth.tar'%(epoch, self.loss_G))
+            model_D_parsing = osp.join(self.save_dir, 'dicriminator_parsing', 'checkpoint_D_epoch_%d_loss_%0.5f_pth.tar'%(epoch, self.loss_D))
 
       #      model_G_depthi = osp.join(self.save_dir, 'generator_depthi', 'checkpoint_G_epoch_%d_loss_%0.5f_pth.tar'%(epoch, self.loss_G))
       #      model_D_depthi = osp.join(self.save_dir, 'dicriminator_depthi', 'checkpoint_D_epoch_%d_loss_%0.5f_pth.tar'%(epoch, self.loss_D))
@@ -806,8 +804,8 @@ class GenerationModel(BaseModel):
                 if not osp.exists(_):
                     os.makedirs(_)            
             torch.save(self.gmm1_model.state_dict(), model_G_gmm1)
- #           torch.save(self.generator_parsing.state_dict(), model_G_parsing)
-       #     torch.save(self.generator_depthi.state_dict(), model_G_depthi)
+            torch.save(self.generator_parsing.state_dict(), model_G_parsing)
+            torch.save(self.generator_depthi.state_dict(), model_G_depthi)
             torch.save(self.generator_appearance.state_dict(), model_G_appearance)
             torch.save(self.generator_face.state_dict(), model_G_face)
             torch.save(self.discriminator_appearance.state_dict(), model_D_appearance)
@@ -821,11 +819,11 @@ class GenerationModel(BaseModel):
 #            errors = {'loss_L1': self.loss.item()}
 
         if opt.train_mode == 'appearance':
-          #  errors = {'loss_G': self.loss_G.item(), 'loss_G_GAN': self.loss_G_GAN.item(), 'loss_G_vgg':self.loss_G_vgg.item(), 'loss_G_mask':self.loss_G_mask.item(),
-          #              'loss_G_L1': self.loss_G_L1.item(), 'loss_D':self.loss_D.item(), 'loss_D_real': self.loss_D_real.item(), 'loss_D_fake':self.loss_D_real.item(), 'loss_G_mask_tv': self.loss_G_mask_tv.item()}
-
-            errors = {'loss_G': self.loss_G.item(), 'loss_G_GAN': self.loss_G_GAN.item(), 'loss_G_vgg':self.loss_G_vgg.item(),
+            errors = {'loss_G': self.loss_G.item(), 'loss_G_GAN': self.loss_G_GAN.item(), 'loss_G_vgg':self.loss_G_vgg.item(), 'loss_G_mask':self.loss_G_mask.item(),
                         'loss_G_L1': self.loss_G_L1.item(), 'loss_D':self.loss_D.item(), 'loss_D_real': self.loss_D_real.item(), 'loss_D_fake':self.loss_D_real.item(), 'loss_G_mask_tv': self.loss_G_mask_tv.item()}
+
+          #  errors = {'loss_G': self.loss_G.item(), 'loss_G_GAN': self.loss_G_GAN.item(), 'loss_G_vgg':self.loss_G_vgg.item(),
+           #             'loss_G_L1': self.loss_G_L1.item(), 'loss_D':self.loss_D.item(), 'loss_D_real': self.loss_D_real.item(), 'loss_D_fake':self.loss_D_real.item(), 'loss_G_mask_tv': self.loss_G_mask_tv.item()}
             
             
             if opt.joint_all and opt.joint_parse_loss:
