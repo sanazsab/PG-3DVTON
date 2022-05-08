@@ -1,0 +1,43 @@
+#obtain image gradient
+
+import os
+import numpy as np
+from PIL.Image import Image
+import cv2
+import json
+import pycocotools.mask as maskUtils
+from tqdm import tqdm
+import math
+import argparse
+from matplotlib import pyplot as plt
+import sys
+sys.path.append('.')
+from util import tensor2im
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--MPV3D_root', type=str, default='../dataset/',help='path to the MPV3D dataset')
+    opt, _ = parser.parse_known_args()
+
+    MPV3D_root = opt.MPV3D_root
+
+    # source dirs
+    person_root = os.path.join(MPV3D_root, 'train1')
+
+    #target dirs
+    gradient_dst = os.path.join(MPV3D_root, 'images-sobel')
+    os.makedirs(gradient_dst, exist_ok=True)
+    person_list = sorted(os.listdir(person_root))
+    for person_name in tqdm(person_list):
+        person_path = os.path.join(person_root, person_name)
+        person = cv2.imread(person_path)
+        #check=print(person.shape)
+#       # person=tensor2im(person, imtype=np.uint8)
+#        person_gray=cv2.cvtColor(person, cv2.COLOR_BGR2GRAY)
+        sobelx = cv2.Sobel(person_gray,cv2.CV_64F,1,0,ksize=5)
+        sobely = cv2.Sobel(person_gray,cv2.CV_64F,0,1,ksize=5)
+        gradientx_outfn = os.path.join(gradient_dst, person_name.replace('.jpg', '_sobelx.jpg'))
+        gradienty_outfn = os.path.join(gradient_dst, person_name.replace('.jpg', '_sobely.jpg'))
+        plt.imsave(gradientx_outfn, sobelx, cmap='gray')
+        plt.imsave(gradienty_outfn, sobely, cmap='gray')
+        print(f'Getting image sobel done and saving to {gradient_dst}!')
