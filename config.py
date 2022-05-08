@@ -31,8 +31,8 @@ class Config():
 
 
         ###appearance
-    #    parser.add_argument('--input_nc_G_app', type=int, default=26, help='# of input image channels: 3 for RGB and 1 for grayscale')  # [3,3,20]  36 / 23 / 26 parsing/gen/MPV gen/
-        parser.add_argument('--input_nc_G_app', type=int, default=6, help='# of input image channels: 3 for RGB and 1 for grayscale')  # [3,3,20]  36 / 23 / 26 parsing/gen/MPV gen/
+        parser.add_argument('--input_nc_G_app', type=int, default=26, help='# of input image channels: 3 for RGB and 1 for grayscale')  # [3,3,20]  36 / 23 / 26 parsing/gen/MPV gen/
+    #    parser.add_argument('--input_nc_G_app', type=int, default=6, help='# of input image channels: 3 for RGB and 1 for grayscale')  # [3,3,20]  36 / 23 / 26 parsing/gen/MPV gen/
         parser.add_argument('--input_nc_D_app', type=int, default=6, help='# of input image channels: 3 for RGB and 1 for grayscale')  # 40 / 6  / 6
         parser.add_argument('--output_nc_app', type=int, default=4, help='# of output image channels: 3 for RGB and 1 for grayscale') # 20 / 3 / 3
         parser.add_argument('--netD_app', type=str, default='resnet_blocks', help='specify discriminator architecture [basic | n_layers | pixel]. The basic model is a 70x70 PatchGAN. n_layers allows you to specify the layers in the discriminator')
