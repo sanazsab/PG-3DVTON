@@ -4,6 +4,8 @@ Virtual try-on
 Installation
 
 Clone this repo
+
+
 git clone https://github.com/AIprogrammer/Detailed-virtual-try-on.git. 
 cd Detailed-virtual-try-on
 Download our pretrained models from one Drive (1: lower link), and put them in "./pretrained_checkpoint".
