@@ -270,9 +270,9 @@ class GenerationModel(BaseModel):
                 self.source_parse_shape = result['source_parse_shape'].float().cuda()
                 self.agnostic = torch.cat((self.source_parse_shape, self.im_h, self.target_pose_embedding), dim=1).cuda()
                 self.generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
-                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
-                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
-                self.generated_bdepthi = F.tanh(self.generated_bdepthi)
+ #               self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
+ #               self.generated_fdepthi = F.tanh(self.generated_fdepthi)
+ #               self.generated_bdepthi = F.tanh(self.generated_bdepthi)
 
             else:    
                 with torch.no_grad():          
