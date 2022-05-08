@@ -270,9 +270,9 @@ class GenerationModel(BaseModel):
                 self.source_parse_shape = result['source_parse_shape'].float().cuda()
                 self.agnostic = torch.cat((self.source_parse_shape, self.im_h, self.target_pose_embedding), dim=1).cuda()
                 self.generated_parsing = F.softmax(self.generator_parsing(self.input_parsing), 1)
- #               self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
- #               self.generated_fdepthi = F.tanh(self.generated_fdepthi)
- #               self.generated_bdepthi = F.tanh(self.generated_bdepthi)
+#                self.generated_fdepthi, self.generated_bdepthi = torch.split(self.generator_depthi(self.input_parsing), [1,1],  1)
+#                self.generated_fdepthi = F.tanh(self.generated_fdepthi)
+#                self.generated_bdepthi = F.tanh(self.generated_bdepthi)
 
             else:    
                 with torch.no_grad():          
@@ -297,7 +297,7 @@ class GenerationModel(BaseModel):
                 # decode labels cost much time
                 _generated_parsing = torch.argmax(self.generated_parsing, 1, keepdim=True)
 #                _generated_parsing = _generated_parsing.permute(0,2,3,1).contiguous().int()
-#                self.generated_parsing_vis = pose_utils.decode_labels(_generated_parsing) #array
+                self.generated_parsing_vis = pose_utils.decode_labels(_generated_parsing) #array
             
             self.real_s = self.source_image
         
@@ -428,9 +428,9 @@ class GenerationModel(BaseModel):
 
                 self.fake_t_face = self.generator_face(input)
                 ###residual learning
-                #"""attention"""
-                fake_t_face = create_part(fake_t_face, self.generated_parsing, 'face', False)
-                fake_t_face = generate_face + fake_t_face
+                r"""attention"""
+                #fake_t_face = create_part(fake_t_face, self.generated_parsing, 'face', False)
+                #fake_t_face = generate_face + fake_t_face
                 self.fake_t_face = create_part(self.fake_t_face, self.generated_parsing_argmax, 'face', False)
                 ### fake image
                 self.fake_t = generate_image_without_face + self.fake_t_face
@@ -721,16 +721,16 @@ class GenerationModel(BaseModel):
 
 
         if opt.train_mode == 'appearance':
-            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.generated_parsing_vis, self.fake_t.detach()]
-#            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.fake_t.detach()]
+#            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.generated_parsing_vis, self.fake_t.detach()]
+            images = [self.source_image, self.im_c, self.target_image, self.cloth_image, self.fake_t.detach()]
 
         if opt.train_mode == 'face':
             images = [self.generated_image.detach(), self.refined_image.detach(), self.source_image, self.target_image, self.real_t, self.fake_t.detach()]
 
 
-        if opt.train_mode != 'depth':
+#        if opt.train_mode != 'depth':
 #            images = [ self.imfn_pred.detach(), self.imbn_pred.detach()]
-            pose_utils.save_img(images, os.path.join(self.vis_path, opt.train_mode + 'weighgmm',  str(epoch) + '_' + str(iteration) + '.jpg'))
+        pose_utils.save_img(images, os.path.join(self.vis_path, opt.train_mode + 'weighgmm',  str(epoch) + '_' + str(iteration) + '.jpg'))
 
     def save_model(self, opt, epoch):
         if opt.train_mode == 'gmm':
